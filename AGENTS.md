@@ -2,11 +2,11 @@
 
 ## Session protocol
 
-Every session starts without memory of the previous one. The repository carries the state,
-and hooks in `.claude/settings.json` keep it current.
+Every session starts without memory of the previous one. The repository carries the state;
+Claude Code hooks add convenience checks, and OpenCode reads this file natively.
 
-**Start.** The `SessionStart` hook injects "Start here", the next features and the git state.
-Run `./scripts/init.sh` and fix anything red before new work.
+**Start.** In Claude Code, the `SessionStart` hook injects "Start here", the next
+features and the git state. Run `./scripts/init.sh` and fix anything red before new work.
 
 **Work, one feature at a time.** New work on a phase starts from a spec:
 `specs/NNN-name/spec.md` (what and why), then `plan.md`, then `tasks.md`. Ask before choices
@@ -21,7 +21,9 @@ the spec leaves open, and record the answer in an ADR.
 The `Stop` hook blocks ending a turn when files changed but `docs/PROGRESS.md` did not.
 A one-line "in progress" note satisfies it.
 
-**End.** When Brian stops ("je reprends demain", "on s'arrête là"), run the `wrap-up` skill.
+**End.** In Claude Code, the `Stop` hook blocks ending a turn when files changed but
+`docs/PROGRESS.md` did not. In either host, when Brian stops ("je reprends demain",
+"on s'arrête là"), run the `wrap-up` skill.
 
 ## Backlog
 
@@ -40,9 +42,9 @@ The main session model is Brian's choice (`/model`). Subagents pin theirs.
 |---|---|
 | Specs, ADRs, architecture, open questions, anything that sets direction | Opus, high effort |
 | Implementing tasks from a `tasks.md` that is already clear | Sonnet |
-| Collecting a diagram's facts from code (skill step 1) | `noodle:fact-finder` agent (Sonnet) |
-| Reviewing a rendered diagram as a tech lead | `noodle:diagram-reviewer` agent (Opus) |
-| Mechanical work: fetching and recolouring logos, variants | `noodle:icon-curator` agent (Haiku) |
+| Collecting a diagram's facts from code (skill step 1) | `noodle:fact-finder` in Claude Code, `fact-finder` in OpenCode (Sonnet/default model) |
+| Reviewing a rendered diagram as a tech lead | `noodle:diagram-reviewer` in Claude Code, `diagram-reviewer` in OpenCode (Opus/default model) |
+| Mechanical work: fetching and recolouring logos, variants | `noodle:icon-curator` in Claude Code, `icon-curator` in OpenCode (Haiku/default model) |
 
 ## Read first
 
@@ -64,11 +66,11 @@ unchecked one in the roadmap.
 
 ## Layout
 
-The repository root is both the Claude Code plugin (`.claude-plugin/plugin.json`,
-`skills/`, `bin/`) and its marketplace (`.claude-plugin/marketplace.json`). `bin/noodle`
-is the wrapper users run; `assets/icons/` is compiled into the binary.
-`.claude/skills/noodle-diagram` is a symlink so sessions in this repo see the skill. `agents/` ships the
-plugin's subagents. `.claude/skills/wrap-up` and the hooks are for working on this repo only.
+The repository root ships the Claude Code plugin (`.claude-plugin/`) and OpenCode project
+configuration (`.opencode/`). `bin/noodle` is the wrapper users run; `assets/icons/` is
+compiled into the binary. `.claude/skills/noodle-diagram` exposes the shared skill;
+`agents/` serves Claude Code and `.opencode/agents/` serves OpenCode. `.claude/skills/wrap-up`
+and the Claude hooks are for working on this repo only.
 Dependencies are vendored: run `go mod vendor` after touching `go.mod`.
 
 ## Check before handing back
@@ -78,6 +80,8 @@ go vet ./... && go test ./...
 go run ./cmd/noodle render examples/cnp-runtime --view runtime
 go run ./cmd/noodle render examples/cnp-runtime --view oidc-login
 claude plugin validate .
+opencode debug skill
+opencode debug agent fact-finder
 ```
 
 For diagram work, render the PNG and look at it. The lint catches geometry, not taste.

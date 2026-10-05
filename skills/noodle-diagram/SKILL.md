@@ -8,18 +8,22 @@ description: Create or update an architecture diagram with noodle, in the house 
 Diagrams are generated, not drawn. The source of truth is a system directory: one
 `model.yaml` (what exists), one file per view in `views/` (what a diagram shows) and, for
 topology views, one layout in `layouts/` (where it is drawn). The format is in
-[reference.md](reference.md): read it before writing one. The `noodle` command, on PATH
-while this plugin is enabled, turns a view into a `.drawio` file and refuses to emit it
+[reference.md](reference.md): read it before writing one. The `noodle` command turns a
+view into a `.drawio` file and refuses to emit it
 while the lint finds a collision. Hand edits in draw.io are for throwaway variants only;
 a canonical change goes through the files so the palette, the IDs and the PR diff stay
 consistent. A project still on the old single-file format converts each file once with
 `noodle migrate <old>.yaml <system-dir>`, which refuses to write a system that would draw
 anything different.
 
+Claude Code puts `noodle` on PATH. In this source checkout with OpenCode, use
+`./bin/noodle` instead; a separately installed `noodle` on PATH also works.
+
 ## Workflow
 
 1. **Facts first, in a subagent.** Hand the question and the code paths to the
-   `noodle:fact-finder` agent. It reads the code that implements what the diagram shows
+   `fact-finder` agent (`noodle:fact-finder` in Claude Code's installed plugin). It reads
+   the code that implements what the diagram shows
    (Helm templates, Terraform, K8s manifests), not only `docs/`, and returns one YAML
    inventory with a source on every fact. Work from that inventory: reading the raw
    files yourself fills this session with YAML that every later turn pays for again.

@@ -24,6 +24,14 @@ decisions go in ADRs, acceptance in `features.json`.
 
 ## Log
 
+### 2026-10-05 · OpenCode integration
+
+- Added native OpenCode definitions for the fact-finder, diagram reviewer and icon curator;
+  the shared diagram skill now invokes the portable `fact-finder` name. Documented OpenCode
+  use and its separate CLI installation requirement. `opencode debug skill` and all three
+  `opencode debug agent` checks pass. With Go installed on Linux Mint, `scripts/init.sh`
+  passes and `./bin/noodle --help` builds and runs.
+
 ### 2026-10-02 · Access matrix (spec 004)
 
 - ADR-0019 and ADR-0020: grants in the model, one `matrix` view, built now on its own

@@ -151,7 +151,9 @@ These are not alternatives: the same model serves all of them.
 
 ```
 .claude-plugin/        Claude Code plugin manifest and marketplace
-bin/noodle             plugin wrapper: finds or builds the binary
+.opencode/             OpenCode subagent definitions
+.claude/skills/        shared skill discovery for Claude Code and OpenCode
+bin/noodle             wrapper: finds or builds the binary
 cmd/noodle/            CLI
 assets/icons/          icons compiled into the binary
 internal/model/        schema, merge, validation
@@ -162,5 +164,5 @@ viewer/                TypeScript web viewer
 schemas/               JSON Schemas of every contract, versioned
 docs/                  vision, architecture, roadmap, ADRs
 examples/              reference models
-skills/                agent skills shipped by the plugin
+skills/                shared agent skills
 ```

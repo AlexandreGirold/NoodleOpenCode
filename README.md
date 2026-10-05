@@ -38,6 +38,21 @@ To offer it to everyone working in a repository, run once there and commit the r
 claude plugin marketplace add TheGostsniperfr/Noodle --scope project
 ```
 
+### With OpenCode
+
+Clone this repository and run `opencode` from its root. OpenCode discovers the diagram
+skill through `.claude/skills/noodle-diagram` and the native subagents in
+`.opencode/agents/`. OpenCode does not add a project's `bin/` to PATH, so use
+`./bin/noodle` here. It needs Go or Nix to build the binary; on Linux Mint:
+
+```bash
+sudo apt update
+sudo apt install golang-go
+./bin/noodle -list-icons
+```
+
+OpenCode has no Claude-style plugin marketplace: this checkout is the project integration.
+
 ### With Nix
 
 ```nix
@@ -88,7 +103,7 @@ The format is in [the skill reference](skills/noodle-diagram/reference.md).
 
 ```bash
 nix develop
-./scripts/init.sh        # vet, test, lint the example, validate the plugin, show next features
+./scripts/init.sh        # vet, test, lint the example, validate the Claude plugin, show next features
 ```
 
 Dependencies are vendored (`go mod vendor`) so the plugin can build offline. Run

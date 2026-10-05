@@ -5,7 +5,7 @@ before the contracts it depends on are frozen.
 
 | Phase | Level | Deliverable | Done when |
 |---|---|---|---|
-| **0** ✅ | · | Repository, vision, architecture, ADRs, v0 generator and skill migrated from the CNP experiment; Claude Code plugin + marketplace, Nix package | `/plugin install noodle@noodle` works on a fresh machine |
+| **0** ✅ | · | Repository, vision, architecture, ADRs, v0 generator and skill migrated from the CNP experiment; Claude Code plugin + marketplace, OpenCode project integration, Nix package | Claude Code installs with `/plugin install noodle@noodle`; OpenCode discovers the project skill and agents |
 | **1** | L0 | Contracts `v1alpha1`: model, view, layout as separate files, with JSON Schemas; lint rules moved into `internal/lint`; CNP runtime example migrated | one model, two views (nominal path, OIDC), lint green |
 | **1b** | L0 | Landscape (tech stack) and catalog (service catalogue) views, `planned` status and target rendered in the core (spec 002, agreed 2026-09-28 before phase 1 closes) | a platform renders its tech stack and service catalogue from its model, planned items hatched with their target |
 | **6a** | L4 | Slice of phase 6 pulled forward (ADR-0016, spec 003): `Fragment` contract, adapter interface, Kubernetes adapter from manifests or `kubectl get -o yaml`, merge and drift report, token benchmark | the PAE platform diagram is built from a discovered fragment, cheaper than an agent reading the manifests, with no loss of connections |
