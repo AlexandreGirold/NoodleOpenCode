@@ -17,6 +17,9 @@ go run ./cmd/noodle render examples/cnp-access --view matrix
 for d in platform-overview app-runtime-view repo-map; do go run ./cmd/noodle render examples/platform-regression/$d -icons examples/platform-regression/icons; done
 go run ./cmd/noodle render docs/diagrams/contract-pipeline -icons docs/diagrams/icons
 
+echo "== generated Mermaid architecture"
+bash ./scripts/check-mermaid.sh
+
 echo "== features.json history"
 ./scripts/check-features.sh
 

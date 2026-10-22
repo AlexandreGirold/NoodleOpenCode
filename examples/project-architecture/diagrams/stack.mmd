@@ -1,0 +1,65 @@
+---
+config:
+  theme: dark
+  securityLevel: strict
+  markdownAutoWrap: false
+  flowchart:
+    wrappingWidth: 350
+  elk:
+    lineHops: false
+---
+%% Jobs · Technology landscape
+%% Which technologies support each capability?
+flowchart TB
+  context["Jobs · Technology landscape<br/>Which technologies support each capability?"]
+  subgraph band_0["Frontend"]
+    subgraph band_0_section_0["Client"]
+      n_62726f77736572(("Browser<br/>JavaScript<br/>Submits jobs from the web page"))
+      %% evidence browser: code
+      %% source browser: source/frontend/app.js
+      n_67617465776179["Web gateway<br/>nginx<br/>Serves the page and proxies API requests"]
+      %% evidence gateway: config
+      %% source gateway: deploy/nginx.conf
+    end
+  end
+  subgraph band_1["Backend"]
+    subgraph band_1_section_0["Services"]
+      n_617069["Jobs API<br/>Python · FastAPI<br/>Stores jobs and queues their IDs"]
+      %% evidence api: code
+      %% source api: deploy/k8s.yaml
+      %% source api: source/api/app.py
+      n_776f726b6572["Worker<br/>Python<br/>Consumes queued IDs and calls validation"]
+      %% evidence worker: code
+      %% source worker: deploy/k8s.yaml
+      %% source worker: source/worker/worker.py
+    end
+  end
+  subgraph band_2["Data"]
+    subgraph band_2_section_0["Stores"]
+      n_706f737467726573[("Job store<br/>PostgreSQL<br/>Persists submitted job payloads")]
+      %% evidence postgres: config
+      %% source postgres: deploy/compose.yaml
+      n_7265646973["Job queue<br/>Redis<br/>Holds job IDs for the worker"]
+      %% evidence redis: config
+      %% source redis: deploy/compose.yaml
+    end
+  end
+  subgraph band_3["External"]
+    subgraph band_3_section_0["Dependencies"]
+      n_65787465726e616c["Validation API [inferred]<br/>External HTTPS API<br/>Configured external processing endpoint"]
+      %% evidence external: inferred; HTTPS URL implies TLS port 443; the example destination is not a verified live service.
+      %% source external: deploy/compose.yaml
+    end
+  end
+  note_65787465726e616c2d656772657373["Egress not verified [medium]<br/>The configured destination is an example hostname. No live<br/>connectivity or production egress policy was checked.<br/>Targets: external, worker-external"]
+  class note_65787465726e616c2d656772657373 note
+  legend["Solid: client opens connection to listener<br/>Dotted: reference or reading order, not traffic<br/>[inferred], [docs], [unknown], [unverified]: evidence status<br/>No port label: listening port not recorded"]
+  classDef note fill:#fef3c7,stroke:#b45309,color:#451a03
+  class legend,context note
+  %% Invisible links below arrange rows; they are not architecture relationships.
+  context ~~~ band_0
+  band_0 ~~~ band_1
+  band_1 ~~~ band_2
+  band_2 ~~~ band_3
+  band_3 ~~~ note_65787465726e616c2d656772657373
+  note_65787465726e616c2d656772657373 ~~~ legend

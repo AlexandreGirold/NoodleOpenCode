@@ -1,0 +1,42 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/TheGostsniperfr/Noodle/schemas/v1alpha2/model.schema.json",
+  "title":"noodle Model","type":"object","required":["apiVersion","kind"],"additionalProperties":false,
+  "properties":{
+    "apiVersion":{"const":"noodle/v1alpha2"},"kind":{"const":"Model"},
+    "elements":{"type":"array","items":{"$ref":"../v1alpha1/model.schema.json#/$defs/element"}},
+    "connections":{"type":"array","items":{"$ref":"../v1alpha1/model.schema.json#/$defs/connection"}},
+    "references":{"type":"array","items":{"$ref":"../v1alpha1/model.schema.json#/$defs/reference"}},
+    "annotations":{"type":"array","items":{"$ref":"../v1alpha1/model.schema.json#/$defs/annotation"}},
+    "offerings":{"type":"array","items":{"$ref":"../v1alpha1/model.schema.json#/$defs/offering"}},
+    "memberships":{"type":"array","items":{"$ref":"../v1alpha1/model.schema.json#/$defs/membership"}},
+    "grants":{"type":"array","items":{"$ref":"../v1alpha1/model.schema.json#/$defs/grant"}},
+    "evidence":{"type":"object","additionalProperties":false,"patternProperties":{"^[A-Za-z0-9][A-Za-z0-9_-]*$":{"$ref":"#/$defs/evidence"}}}
+  },
+   "$defs": {
+     "evidence": {
+       "type": "object", "required": ["how"], "additionalProperties": false,
+       "properties": {
+         "how": {"enum": ["code", "config", "inferred", "docs", "unknown"]},
+         "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+         "note": {"type": "string"}
+       },
+       "allOf": [
+         {"if": {"properties": {"how": {"const": "unknown"}}}, "then": {"required": ["note"], "properties": {"note": {"pattern": "\\S"}}}},
+         {"if": {"properties": {"how": {"enum": ["code", "config", "inferred", "docs"]}}}, "then": {"properties": {"sources": {"minItems": 1}}, "required": ["sources"]}}
+       ]
+     },
+     "source": {
+       "type": "object", "additionalProperties": false,
+       "properties": {
+         "file": {"type": "string", "pattern": "\\S"},
+         "line": {"type": "integer", "minimum": 0},
+         "object": {"type": "string", "pattern": "\\S"}
+       },
+       "oneOf": [
+         {"required": ["file"], "not": {"required": ["object"]}},
+         {"required": ["object"], "not": {"anyOf": [{"required": ["file"]}, {"required": ["line"]}]}}
+       ]
+     }
+   }
+}

@@ -17,18 +17,40 @@ import (
 	"github.com/TheGostsniperfr/Noodle/internal/model"
 )
 
-const schemaDir = "../../schemas/v1alpha1"
-
-func compileSchemas(t *testing.T) map[string]*jsonschema.Schema {
+func compileSchemas(t *testing.T) map[string]map[string]*jsonschema.Schema {
 	t.Helper()
 	c := jsonschema.NewCompiler()
-	out := map[string]*jsonschema.Schema{}
-	for _, kind := range []string{"Model", "View", "Layout", "Fragment"} {
-		path, err := filepath.Abs(filepath.Join(schemaDir, strings.ToLower(kind)+".schema.json"))
-		require.NoError(t, err)
-		s, err := c.Compile(path)
-		require.NoError(t, err, kind)
-		out[kind] = s
+	// Register canonical IDs as well as file locations so cross-version references
+	// resolve offline, even when a schema's $id is an HTTPS URL.
+	for _, version := range []string{"v1alpha1", "v1alpha2"} {
+		for _, kind := range []string{"model", "view", "layout", "fragment"} {
+			if version == "v1alpha2" && kind == "fragment" {
+				continue
+			}
+			path, err := filepath.Abs(filepath.Join("../../schemas", version, kind+".schema.json"))
+			require.NoError(t, err)
+			raw, err := os.ReadFile(path)
+			require.NoError(t, err)
+			doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+			require.NoError(t, err)
+			require.NoError(t, c.AddResource(path, doc))
+			require.NoError(t, c.AddResource(doc.(map[string]any)["$id"].(string), doc))
+		}
+	}
+	out := map[string]map[string]*jsonschema.Schema{}
+	for _, version := range []string{"v1alpha1", "v1alpha2"} {
+		out[version] = map[string]*jsonschema.Schema{}
+		kinds := []string{"Model", "View", "Layout"}
+		if version == "v1alpha1" {
+			kinds = append(kinds, "Fragment")
+		}
+		for _, kind := range kinds {
+			path, err := filepath.Abs(filepath.Join("../../schemas", version, strings.ToLower(kind)+".schema.json"))
+			require.NoError(t, err)
+			s, err := c.Compile(path)
+			require.NoError(t, err, kind)
+			out[version][kind] = s
+		}
 	}
 	return out
 }
@@ -85,7 +107,12 @@ func TestSchemas_AcceptEveryContractFileInTheRepository(t *testing.T) {
 			raw, err := os.ReadFile(path)
 			require.NoError(t, err)
 
-			err = schemas[kind].Validate(yamlToJSONValue(t, raw))
+			var version struct {
+				APIVersion string `yaml:"apiVersion"`
+			}
+			require.NoError(t, yaml.Unmarshal(raw, &version))
+			ver := strings.TrimPrefix(version.APIVersion, "noodle/")
+			err = schemas[ver][kind].Validate(yamlToJSONValue(t, raw))
 
 			assert.NoError(t, err)
 		})
@@ -100,9 +127,68 @@ func TestSchemas_AcceptEncodedFragment_WithEmptyFieldsLeftOut(t *testing.T) {
 	var buf bytes.Buffer
 
 	require.NoError(t, model.EncodeFragment(&buf, s.Fragments["k8s-manifests"]))
-	err = schemas["Fragment"].Validate(yamlToJSONValue(t, buf.Bytes()))
+	err = schemas["v1alpha1"]["Fragment"].Validate(yamlToJSONValue(t, buf.Bytes()))
 
 	assert.NoError(t, err)
+}
+
+func TestArchitectureEvidenceSchemaRuntimeParity(t *testing.T) {
+	schema := compileSchemas(t)["v1alpha2"]["Model"]
+	for _, tc := range []struct {
+		name, evidence string
+		valid          bool
+	}{
+		{"file", "{how: code, sources: [{file: src/api.go, line: 0}]}", true},
+		{"object", "{how: config, sources: [{object: prod/Deployment/api}]}", true},
+		{"unknown", "{how: unknown, note: Confirm the deployment.}", true},
+		{"aliased how", "{note: &kind code, how: *kind, sources: [{file: x}]}", true},
+		{"aliased note", "{how: &kind unknown, note: *kind}", true},
+		{"aliased file", "{how: config, note: &path compose.yaml, sources: [{file: *path}]}", true},
+		{"aliased line", "{how: config, sources: [{file: a, line: &line 1}, {file: b, line: *line}]}", true},
+		{"blank note", "{how: unknown, note: '   '}", false},
+		{"empty note", "{how: unknown, note: ''}", false},
+		{"numeric note", "{how: unknown, note: 123}", false},
+		{"null sources", "{how: unknown, note: Unknown., sources: null}", false},
+		{"missing source", "{how: code}", false},
+		{"invalid classification", "{how: observed, sources: [{file: x}]}", false},
+		{"both source alternatives", "{how: config, sources: [{file: x, object: ''}]}", false},
+		{"blank source", "{how: config, sources: [{file: ' '}]}", false},
+		{"negative line", "{how: config, sources: [{file: x, line: -1}]}", false},
+		{"object with line", "{how: config, sources: [{object: x, line: 0}]}", false},
+		{"unknown source field", "{how: config, sources: [{file: x, typo: y}]}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := []byte("apiVersion: noodle/v1alpha2\nkind: Model\nelements: [{id: api, kind: backend}]\nevidence: {api: " + tc.evidence + "}\n")
+			schemaErr := schema.Validate(yamlToJSONValue(t, doc))
+			dir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "model.yaml"), doc, 0o644))
+			s, loadErr := model.LoadSystem(dir)
+			runtimeValid := loadErr == nil
+			if runtimeValid {
+				runtimeValid = len(model.CheckArchitecture(s)) == 0
+			}
+			assert.Equal(t, tc.valid, schemaErr == nil, "schema: %v", schemaErr)
+			assert.Equal(t, tc.valid, runtimeValid, "load: %v", loadErr)
+		})
+	}
+}
+
+func TestArchitectureSharedEvidenceSources(t *testing.T) {
+	doc := []byte(`apiVersion: noodle/v1alpha2
+kind: Model
+elements: [{id: a, kind: backend}, {id: b, kind: backend}]
+evidence:
+  a: {how: config, sources: &sources [{file: compose.yaml}]}
+  b: {how: config, sources: *sources}
+`)
+	schema := compileSchemas(t)["v1alpha2"]["Model"]
+	require.NoError(t, schema.Validate(yamlToJSONValue(t, doc)))
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "model.yaml"), doc, 0o644))
+	s, err := model.LoadSystem(dir)
+	require.NoError(t, err)
+	assert.Empty(t, model.CheckArchitecture(s))
+	assert.Equal(t, s.Model.Evidence["a"].Sources, s.Model.Evidence["b"].Sources)
 }
 
 func TestSchemas_Reject(t *testing.T) {
@@ -141,7 +227,12 @@ func TestSchemas_Reject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := schemas[tt.kind].Validate(yamlToJSONValue(t, []byte(tt.doc)))
+			var version struct {
+				APIVersion string `yaml:"apiVersion"`
+			}
+			require.NoError(t, yaml.Unmarshal([]byte(tt.doc), &version))
+			ver := strings.TrimPrefix(version.APIVersion, "noodle/")
+			err := schemas[ver][tt.kind].Validate(yamlToJSONValue(t, []byte(tt.doc)))
 
 			assert.Error(t, err)
 		})

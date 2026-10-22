@@ -1,0 +1,12 @@
+apiVersion: noodle/v1alpha2
+kind: View
+type: topology
+title: Jobs · Communication
+subtitle: Who opens each connection and what does the listener expose?
+include: [browser, gateway, api, postgres, redis, worker, external]
+steps:
+  - browser-gateway
+  - gateway-api
+  - api-postgres
+  - api-redis
+background: [worker-redis, worker-external]

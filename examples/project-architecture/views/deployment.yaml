@@ -1,0 +1,7 @@
+apiVersion: noodle/v1alpha2
+kind: View
+type: topology
+title: Jobs · Deployment
+subtitle: Which local and production resources implement the logical services?
+meta: [Dotted deploys links are configuration references; no cross-environment traffic is asserted.]
+include: [local/**, prod/**, api, worker]

@@ -7,12 +7,13 @@ decisions go in ADRs, acceptance in `features.json`.
 ## Start here
 
 1. `./scripts/init.sh`: fix anything red before new work.
-2. Read the current spec: [`specs/003-static-discovery/spec.md`](../specs/003-static-discovery/spec.md)
-   and ADR-0017, ADR-0018. Backlog: the [project board](https://github.com/users/TheGostsniperfr/projects/5), issue #42.
-3. Next action: spec 003 T05 (secrets and references, Argo CD Applications), then T06,
-   T12 and the T14 checkpoint before anything else ([`tasks.md`](../specs/003-static-discovery/tasks.md)).
-   Phase 1 still has spec 002 T03 (issue #43, in `dockair-docs`).
-   Measure on real repos with `scripts/discover-eval.sh`.
+2. Latest verified work: [`spec 006`](../specs/006-repository-inventory/spec.md), ADR-0022,
+   deterministic inventory and supported extraction, after spec 005's Mermaid foundation.
+   See its tasks and the latest log entry for verification and explicit parser gaps.
+3. Existing discovery backlog is retained: spec 003 T05, T06, T12 and its T14 checkpoint
+   ([tasks](../specs/003-static-discovery/tasks.md), issue #42). Spec 002 T03 remains
+   external (issue #43, `dockair-docs`). Measure discovery on real repos with
+   `scripts/discover-eval.sh` before claiming its acceptance criteria.
 
 ## Open threads outside this repo
 
@@ -23,6 +24,46 @@ decisions go in ADRs, acceptance in `features.json`.
 | `~/.dotfiles` | noodle plugin installed declaratively (commit `9bf7e57`) | pushed. `nixos-rebuild switch` still to run. |
 
 ## Log
+
+### 2026-10-22 · Repository inventory and extraction (spec 006)
+
+- Implemented `noodle scan ROOT… -o inventory.yaml`: deterministic multi-root inventory,
+  SHA-256/source locations, existing Kubernetes extraction reuse, conservative Compose
+  and dependency metadata extraction. Helm/Kustomize require rendering; other detected
+  formats and dynamic values remain explicit gaps. Folder scopes avoid environment mixing.
+- Inventory schema is independently versioned; curated models and Fragment contracts
+  are unchanged. Secret values, environment files, scripts and dependency URLs are omitted.
+- All Go vet/tests, `scripts/init.sh`, CLI wrapper, OpenCode skill/agent checks pass.
+  Claude CLI is absent. Mixed-stack/self/two-root smoke scans and reversed-root byte
+  comparison pass; exact outcomes and payload estimates are in spec 006 tasks.md.
+- Repository/global skill scan before LLM source reading, reuse existing facts/viewers,
+  and preserve the dark-only future-visualization preference. No cache engine or measured
+  LLM-token saving is claimed. Existing discovery backlog retains its acceptance criteria.
+- Commit-time validation caught blank evidence-note whitespace in newly staged Mermaid
+  fixtures; corrected the generator and regenerated the canonical source fixtures.
+
+### 2026-10-22 · Project architecture and Mermaid (spec 005)
+
+- Implemented on `feat/project-architecture-mermaid`: model-first, agent-assisted
+  architecture docs; ADR-0021/spec 005. v1alpha2 carries per-fact evidence, semantic
+  validation without coordinates and a non-overwriting `noodle upgrade` from v1alpha1.
+  Existing contracts/discovery/draw.io paths remain covered by the regression suite.
+- P005-01/02/03 verified by model, renderer and CLI tests. Mermaid topology/landscape
+  output has stable IDs, target ports, visible evidence/context/annotations and
+  reference semantics. Upgrade/validation tests cover YAML aliases and schema parity.
+- P005-04/05/06 verified: mixed-stack source inventory collected by a Beam subagent,
+  four generated Mermaid views/guide, reproducibility script in init/CI, native
+  Mermaid CLI 12 rendering, dark/light visual inspection and independent SOL high
+  review. Review fixes include disabling line hops that erased reference dashes.
+  The shared skill is a short workflow linking detailed reference/examples.
+- Final `go vet ./...`, `go test ./...`, `./scripts/init.sh`, `git diff --check`,
+  `opencode debug skill` and `opencode debug agent fact-finder` pass. Claude CLI is
+  absent, so Claude plugin validation is skipped; GitHub CLI is absent, so the spec's
+  issue/board entry is pending. See spec 005 tasks for evidence and limits.
+- Interactive explorer remains the follow-on, not included in this docs-first slice.
+  Existing untracked hub-spoke skill is user work. Global routing preferences and
+  intelligence snapshot were saved separately in `~/.config/opencode/docs/model-routing.md`;
+  no automatic global fallback router was implemented by this noodle feature.
 
 ### 2026-10-05 · OpenCode integration
 

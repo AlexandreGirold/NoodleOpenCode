@@ -1,0 +1,29 @@
+# Local configuration fixture. Production is a separate deployment, not a network peer.
+services:
+  gateway:
+    image: nginx:1.27
+    ports: ["8080:80"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../source/frontend:/usr/share/nginx/html:ro
+  api:
+    image: example/jobs-api:1
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGPASSWORD: ${PGPASSWORD:?set a local test password}
+      REDIS_URL: redis://redis:6379
+    expose: ["8000"]
+  worker:
+    image: example/jobs-worker:1
+    environment:
+      REDIS_URL: redis://redis:6379
+      VALIDATION_URL: https://validation.example/jobs
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_DB: app
+      POSTGRES_PASSWORD: ${PGPASSWORD:?set a local test password}
+  redis:
+    image: redis:7

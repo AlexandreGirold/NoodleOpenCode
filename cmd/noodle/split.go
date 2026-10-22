@@ -9,6 +9,7 @@ import (
 	"github.com/TheGostsniperfr/Noodle/internal/house"
 	"github.com/TheGostsniperfr/Noodle/internal/lint"
 	"github.com/TheGostsniperfr/Noodle/internal/model"
+	"github.com/TheGostsniperfr/Noodle/internal/render/mermaid"
 	"github.com/TheGostsniperfr/Noodle/internal/resolve"
 )
 
@@ -17,7 +18,8 @@ import (
 func renderCommand(args []string) error {
 	fs := flag.NewFlagSet("render", flag.ContinueOnError)
 	viewID := fs.String("view", "", "view id, the file stem in views/ (optional when the system has one view)")
-	out := fs.String("o", "", "output .drawio path (lint only when empty)")
+	out := fs.String("o", "", "output path (validate only when empty)")
+	format := fs.String("format", "drawio", "drawio or mermaid")
 	icons := fs.String("icons", "", "comma-separated directories of extra <name>.svg icons")
 	themeName := fs.String("theme", "dark", "dark or light")
 	slide := fs.Bool("slide", false, "drawing only, cropped to its content: no header, cards or notes")
@@ -33,7 +35,13 @@ func renderCommand(args []string) error {
 		args = fs.Args()[1:]
 	}
 	if len(dirs) != 1 {
-		return fmt.Errorf("usage: noodle render DIR [-view ID] [-o out.drawio] [-theme dark|light] [-icons DIR[,DIR]]")
+		return fmt.Errorf("usage: noodle render DIR [-view ID] [-format drawio|mermaid] [-o FILE] [-theme dark|light] [-icons DIR[,DIR]]")
+	}
+	if *format != "drawio" && *format != "mermaid" {
+		return fmt.Errorf("render: unknown format %q, want drawio or mermaid", *format)
+	}
+	if *format == "mermaid" && (*icons != "" || *slide) {
+		return fmt.Errorf("render: -icons and -slide are drawio options, not supported for mermaid")
 	}
 	set, err := newIconSet(splitList(*icons))
 	if err != nil {
@@ -47,11 +55,13 @@ func renderCommand(args []string) error {
 	if err != nil {
 		return err
 	}
-	if findings := model.Check(s); len(findings) > 0 {
-		for _, f := range findings {
-			fmt.Fprintf(os.Stderr, "check: %s\n", f)
+	if *format == "drawio" {
+		if findings := model.Check(s); len(findings) > 0 {
+			for _, f := range findings {
+				fmt.Fprintf(os.Stderr, "check: %s\n", f)
+			}
+			return fmt.Errorf("%d check finding(s) in %s", len(findings), dirs[0])
 		}
-		return fmt.Errorf("%d check finding(s) in %s", len(findings), dirs[0])
 	}
 	id := *viewID
 	if id == "" {
@@ -64,6 +74,36 @@ func renderCommand(args []string) error {
 	v, ok := s.Views[id]
 	if !ok {
 		return fmt.Errorf("resolve: no view %q in %s", id, dirs[0])
+	}
+	if *format == "mermaid" {
+		text, err := mermaid.Render(s, id)
+		if err != nil {
+			return err
+		}
+		if *out == "" {
+			return nil
+		}
+		theme := "default"
+		if *themeName == "dark" {
+			theme = "dark"
+		}
+		// Mermaid 12's line-hop postprocessing can turn a dotted reference solid.
+		// Preserve relationship styling rather than depending on crossing decoration.
+		text = fmt.Sprintf(`---
+config:
+  theme: %s
+  securityLevel: strict
+  markdownAutoWrap: false
+  flowchart:
+    wrappingWidth: 350
+  elk:
+    lineHops: false
+---
+%s`, theme, text)
+		if err := os.WriteFile(*out, []byte(text), 0o644); err != nil {
+			return fmt.Errorf("render: write Mermaid %s: %w", *out, err)
+		}
+		return nil
 	}
 	if v.Type == "sequence" {
 		return renderSequenceView(s, id, *out, th, set)

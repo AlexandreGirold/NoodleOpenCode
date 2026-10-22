@@ -17,14 +17,18 @@ import (
 
 const slideMargin = 24.0
 
-const usage = `usage: noodle render DIR [-view ID] [-o out.drawio] [-theme dark|light] [-icons DIR[,DIR]] [-slide]
-       noodle migrate SPEC.yaml DIR   (a v0 single file to a v1alpha1 system)
+const usage = `usage: noodle render DIR [-view ID] [-format drawio|mermaid] [-o FILE] [-theme dark|light] [-icons DIR[,DIR]] [-slide]
+        noodle scan ROOT… [-o inventory.yaml] [-namespace NS]
+        noodle migrate SPEC.yaml DIR   (a v0 single file to a v1alpha1 system)
+        noodle upgrade SOURCE_DIR NEW_DIR   (v1alpha1 to v1alpha2, evidence marked unknown)
        noodle discover ADAPTER [PATH…|-] [-o fragment.yaml]
        noodle -list-icons [-icons DIR[,DIR]]`
 
 func main() {
 	if len(os.Args) > 1 {
-		commands := map[string]func([]string) error{"render": renderCommand, "migrate": migrateCommand, "discover": func(args []string) error {
+		commands := map[string]func([]string) error{"render": renderCommand, "migrate": migrateCommand, "upgrade": upgradeCommand, "scan": func(args []string) error {
+			return scanCommand(context.Background(), args, os.Stdout, os.Stderr)
+		}, "discover": func(args []string) error {
 			reg, err := adapters()
 			if err != nil {
 				return err

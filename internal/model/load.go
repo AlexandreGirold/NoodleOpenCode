@@ -46,6 +46,9 @@ func LoadSystem(dir string) (*System, error) {
 		if err := decodeFile(path, "View", v); err != nil {
 			return nil, fmt.Errorf("LoadSystem: %w", err)
 		}
+		if v.APIVersion != s.Model.APIVersion {
+			return nil, fmt.Errorf("LoadSystem: %s: apiVersion %q differs from model apiVersion %q", path, v.APIVersion, s.Model.APIVersion)
+		}
 		s.Views[v.ID] = v
 	}
 	layouts, err := yamlFiles(filepath.Join(dir, "layouts"))
@@ -56,6 +59,9 @@ func LoadSystem(dir string) (*System, error) {
 		l := &Layout{ID: stem(path)}
 		if err := decodeFile(path, "Layout", l); err != nil {
 			return nil, fmt.Errorf("LoadSystem: %w", err)
+		}
+		if l.APIVersion != s.Model.APIVersion {
+			return nil, fmt.Errorf("LoadSystem: %s: apiVersion %q differs from model apiVersion %q", path, l.APIVersion, s.Model.APIVersion)
 		}
 		s.Layouts[l.ID] = l
 	}
@@ -89,8 +95,11 @@ func decodeFile(path, kind string, out any) error {
 	if err := yaml.Unmarshal(raw, &h); err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
-	if h.APIVersion != APIVersion {
+	if kind == "Fragment" && h.APIVersion != APIVersion {
 		return fmt.Errorf("%s: apiVersion %q, want %q", path, h.APIVersion, APIVersion)
+	}
+	if kind != "Fragment" && h.APIVersion != APIVersion && h.APIVersion != ArchitectureVersion {
+		return fmt.Errorf("%s: apiVersion %q, want %q or %q", path, h.APIVersion, APIVersion, ArchitectureVersion)
 	}
 	if h.Kind != kind {
 		return fmt.Errorf("%s: kind %q, want %q", path, h.Kind, kind)
@@ -99,6 +108,17 @@ func decodeFile(path, kind string, out any) error {
 	dec.KnownFields(true)
 	if err := dec.Decode(out); err != nil {
 		return fmt.Errorf("%s: %w", path, err)
+	}
+	// A v2 field in a legacy document must not be accepted merely because the Go
+	// struct knows it. Presence matters even for an explicitly empty map.
+	if h.APIVersion == APIVersion && kind == "Model" {
+		var fields map[string]yaml.Node
+		if err := yaml.Unmarshal(raw, &fields); err != nil {
+			return fmt.Errorf("%s: %w", path, err)
+		}
+		if _, exists := fields["evidence"]; exists {
+			return fmt.Errorf("%s: evidence requires apiVersion %q", path, ArchitectureVersion)
+		}
 	}
 	return nil
 }

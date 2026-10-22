@@ -34,5 +34,16 @@ before the contracts it depends on are frozen.
 
 ## Next up: phase 1
 
+**Priority amendment (2026-10-22, ADR-0022):** user-requested
+[`006-repository-inventory`](../specs/006-repository-inventory/spec.md) adds deterministic
+input discovery and supported declarative extraction before LLM interpretation. Existing
+Kubernetes discovery backlog and its acceptance criteria remain unchanged.
+
+**Priority amendment (2026-10-22, ADR-0021):** spec
+[`005-project-architecture-mermaid`](../specs/005-project-architecture-mermaid/spec.md)
+adds source-backed whole-project architecture documentation and Mermaid output first.
+The remaining discovery tasks keep their acceptance requirements. An interactive
+explorer follows verified documentation generation on the shared model.
+
 Spec: [`specs/001-model-view-layout-split/spec.md`](../specs/001-model-view-layout-split/spec.md).
 Acceptance: features `P1-*` in [`features.json`](features.json).

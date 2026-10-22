@@ -1,4 +1,4 @@
-// Package model holds the v1alpha1 contracts of ADR-0007: what exists (Model), what is
+// Package model holds the versioned noodle contracts: what exists (Model), what is
 // shown (View) and where it is drawn (Layout), and loads them from a system directory.
 package model
 
@@ -12,6 +12,10 @@ import (
 
 const APIVersion = "noodle/v1alpha1"
 
+// ArchitectureVersion is the apiVersion of v1alpha2 architecture models, views and
+// layouts (ADR-0021). v1alpha1 remains readable and fragments stay v1alpha1.
+const ArchitectureVersion = "noodle/v1alpha2"
+
 type Model struct {
 	APIVersion  string       `yaml:"apiVersion"`
 	Kind        string       `yaml:"kind"`
@@ -22,6 +26,96 @@ type Model struct {
 	Offerings   []Offering   `yaml:"offerings"`
 	Memberships []Membership `yaml:"memberships"`
 	Grants      []Grant      `yaml:"grants"`
+	// Evidence is keyed by element, connection or reference id (ADR-0021).
+	Evidence map[string]Evidence `yaml:"evidence,omitempty"`
+}
+
+// Evidence records how a fact was established.
+type Evidence struct {
+	How     string           `yaml:"how"`
+	Sources []EvidenceSource `yaml:"sources,omitempty"`
+	Note    string           `yaml:"note,omitempty"`
+}
+
+func (e *Evidence) UnmarshalYAML(node *yaml.Node) error {
+	var fields map[string]yaml.Node
+	if err := node.Decode(&fields); err != nil {
+		return err
+	}
+	for key, value := range fields {
+		value = evidenceValue(value)
+		switch key {
+		case "how", "note":
+			if value.Tag != "!!str" {
+				return fmt.Errorf("evidence %s must be a string", key)
+			}
+		case "sources":
+			if value.Kind != yaml.SequenceNode {
+				return fmt.Errorf("evidence sources must be an array")
+			}
+		default:
+			return fmt.Errorf("unknown evidence field %q", key)
+		}
+	}
+	type plain Evidence
+	var out plain
+	if err := node.Decode(&out); err != nil {
+		return err
+	}
+	*e = Evidence(out)
+	return nil
+}
+
+// EvidenceSource distinguishes an omitted line from an explicit line: 0 is valid for
+// source-backed evidence, but lines cannot be attached to API object sources.
+type EvidenceSource struct {
+	File   string `yaml:"file,omitempty"`
+	Line   *int   `yaml:"line,omitempty"`
+	Object string `yaml:"object,omitempty"`
+}
+
+// UnmarshalYAML preserves the source contract's field-presence rules: an empty
+// object key alongside file is still two source alternatives, not an absent key.
+func (s *EvidenceSource) UnmarshalYAML(node *yaml.Node) error {
+	var fields map[string]yaml.Node
+	if err := node.Decode(&fields); err != nil {
+		return err
+	}
+	_, file := fields["file"]
+	_, object := fields["object"]
+	if file == object {
+		return fmt.Errorf("evidence source needs exactly one of file or object")
+	}
+	for key, value := range fields {
+		value = evidenceValue(value)
+		switch key {
+		case "file", "object":
+			if value.Tag != "!!str" || strings.TrimSpace(value.Value) == "" {
+				return fmt.Errorf("evidence source %s must be a nonblank string", key)
+			}
+		case "line":
+			if !file || value.Tag != "!!int" {
+				return fmt.Errorf("evidence line must be an integer accompanying file")
+			}
+		default:
+			return fmt.Errorf("unknown evidence source field %q", key)
+		}
+	}
+	type plain EvidenceSource
+	var out plain
+	if err := node.Decode(&out); err != nil {
+		return err
+	}
+	*s = EvidenceSource(out)
+	return nil
+}
+
+// YAML aliases have the same contract meaning as their resolved value.
+func evidenceValue(node yaml.Node) yaml.Node {
+	for node.Kind == yaml.AliasNode && node.Alias != nil {
+		node = *node.Alias
+	}
+	return node
 }
 
 // Membership says Subject belongs to Group or assumes it: a user in a Keycloak group, a

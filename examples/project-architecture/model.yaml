@@ -1,0 +1,54 @@
+apiVersion: noodle/v1alpha2
+kind: Model
+elements:
+  - {id: browser, kind: frontend, title: Browser, tech: JavaScript, desc: Submits jobs from the web page, shape: actor}
+  - {id: gateway, kind: backend, title: Web gateway, tech: nginx, desc: Serves the page and proxies API requests, ports: [{name: http, protocol: TCP, port: 80}]}
+  - {id: api, kind: backend, title: Jobs API, tech: Python · FastAPI, desc: Stores jobs and queues their IDs, ports: [{name: http, protocol: TCP, port: 8000}], matches: ['k8s:prod/deployment/api']}
+  - {id: postgres, kind: database, title: Job store, tech: PostgreSQL, desc: Persists submitted job payloads, shape: cylinder, ports: [{name: sql, protocol: TCP, port: 5432}]}
+  - {id: redis, kind: bus, title: Job queue, tech: Redis, desc: Holds job IDs for the worker, ports: [{name: redis, protocol: TCP, port: 6379}]}
+  - {id: worker, kind: backend, title: Worker, tech: Python, desc: Consumes queued IDs and calls validation, matches: ['k8s:prod/deployment/worker']}
+  - {id: external, kind: external, title: Validation API, tech: External HTTPS API, desc: Configured external processing endpoint, ports: [{name: https, protocol: TCP, port: 443}]}
+  - {id: local, kind: region, title: Local development, tech: Docker Compose, sub: Separate local instance}
+  - {id: prod, kind: region, title: Production, tech: Kubernetes, sub: Namespace prod · deployment intent}
+  - {id: local-api, kind: backend, parent: local, title: api service, tech: Compose}
+  - {id: local-worker, kind: backend, parent: local, title: worker service, tech: Compose}
+  - {id: prod-api, kind: backend, parent: prod, title: api Deployment, tech: Kubernetes}
+  - {id: prod-worker, kind: backend, parent: prod, title: worker Deployment, tech: Kubernetes}
+connections:
+  - {id: browser-gateway, from: browser, to: gateway, kind: flow, port: http, protocol: HTTP, verb: submit job}
+  - {id: gateway-api, from: gateway, to: api, kind: flow, port: http, protocol: HTTP, verb: proxy /api/}
+  - {id: api-postgres, from: api, to: postgres, kind: flow, port: sql, protocol: PostgreSQL, verb: insert job}
+  - {id: api-redis, from: api, to: redis, kind: flow, port: redis, protocol: RESP, verb: RPUSH jobs}
+  - {id: worker-redis, from: worker, to: redis, kind: async, port: redis, protocol: RESP, verb: BLPOP jobs}
+  - {id: worker-external, from: worker, to: external, kind: async, port: https, protocol: HTTPS, verb: POST job ID}
+references:
+  - {id: local-deploys-api, from: local-api, to: api, kind: deploys}
+  - {id: local-deploys-worker, from: local-worker, to: worker, kind: deploys}
+  - {id: prod-deploys-api, from: prod-api, to: api, kind: deploys}
+  - {id: prod-deploys-worker, from: prod-worker, to: worker, kind: deploys}
+annotations:
+  - {id: external-egress, severity: medium, title: Egress not verified, text: The configured destination is an example hostname. No live connectivity or production egress policy was checked., targets: [external, worker-external]}
+evidence:
+  browser: {how: code, sources: [{file: source/frontend/app.js}]}
+  gateway: {how: config, sources: [{file: deploy/nginx.conf}]}
+  api: {how: code, sources: [{file: source/api/app.py}, {file: deploy/k8s.yaml}]}
+  postgres: {how: config, sources: [{file: deploy/compose.yaml}]}
+  redis: {how: config, sources: [{file: deploy/compose.yaml}]}
+  worker: {how: code, sources: [{file: source/worker/worker.py}, {file: deploy/k8s.yaml}]}
+  external: {how: inferred, sources: [{file: deploy/compose.yaml}], note: HTTPS URL implies TLS port 443; the example destination is not a verified live service.}
+  local: {how: config, sources: [{file: deploy/compose.yaml}]}
+  prod: {how: config, sources: [{file: deploy/k8s.yaml}]}
+  local-api: {how: config, sources: [{file: deploy/compose.yaml}]}
+  local-worker: {how: config, sources: [{file: deploy/compose.yaml}]}
+  prod-api: {how: config, sources: [{file: deploy/k8s.yaml}]}
+  prod-worker: {how: config, sources: [{file: deploy/k8s.yaml}]}
+  browser-gateway: {how: code, sources: [{file: source/frontend/app.js}, {file: deploy/nginx.conf}]}
+  gateway-api: {how: config, sources: [{file: deploy/nginx.conf}]}
+  api-postgres: {how: code, sources: [{file: source/api/app.py}, {file: deploy/compose.yaml}]}
+  api-redis: {how: code, sources: [{file: source/api/app.py}, {file: deploy/compose.yaml}]}
+  worker-redis: {how: code, sources: [{file: source/worker/worker.py}, {file: deploy/compose.yaml}]}
+  worker-external: {how: inferred, sources: [{file: source/worker/worker.py}, {file: deploy/compose.yaml}], note: 'The client and URL establish intended traffic, not verified live reachability.'}
+  local-deploys-api: {how: config, sources: [{file: deploy/compose.yaml}]}
+  local-deploys-worker: {how: config, sources: [{file: deploy/compose.yaml}]}
+  prod-deploys-api: {how: config, sources: [{file: deploy/k8s.yaml}]}
+  prod-deploys-worker: {how: config, sources: [{file: deploy/k8s.yaml}]}

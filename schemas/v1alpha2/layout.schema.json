@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TheGostsniperfr/Noodle/schemas/v1alpha2/layout.schema.json",
+  "title": "noodle architecture Layout",
+  "type": "object", "required": ["apiVersion", "kind"], "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"const": "noodle/v1alpha2"}, "kind": {"const": "Layout"},
+    "canvas": {"type": "object", "additionalProperties": false, "properties": {
+      "width": {"type": "number", "exclusiveMinimum": 0}, "height": {"type": "number", "exclusiveMinimum": 0}
+    }},
+    "lanes": {"$ref": "../v1alpha1/layout.schema.json#/properties/lanes"},
+    "elements": {"type": "object", "additionalProperties": {"$ref": "../v1alpha1/layout.schema.json#/$defs/box"}},
+    "edges": {"type": "object", "additionalProperties": {"$ref": "../v1alpha1/layout.schema.json#/$defs/edge"}},
+    "cards": {"type": "object", "additionalProperties": {"$ref": "../v1alpha1/layout.schema.json#/$defs/box"}},
+    "notes": {"type": "object", "additionalProperties": {"$ref": "../v1alpha1/layout.schema.json#/$defs/box"}}
+  }
+}

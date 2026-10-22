@@ -1,0 +1,65 @@
+---
+config:
+  theme: dark
+  securityLevel: strict
+  markdownAutoWrap: false
+  flowchart:
+    wrappingWidth: 350
+  elk:
+    lineHops: false
+---
+%% Jobs · Communication
+%% Who opens each connection and what does the listener expose?
+flowchart LR
+  context["Jobs · Communication<br/>Who opens each connection and what does the listener expose?"]
+  n_617069["Jobs API<br/>Python · FastAPI<br/>Stores jobs and queues their IDs"]
+  %% evidence api: code
+  %% source api: deploy/k8s.yaml
+  %% source api: source/api/app.py
+  n_62726f77736572(("Browser<br/>JavaScript<br/>Submits jobs from the web page"))
+  %% evidence browser: code
+  %% source browser: source/frontend/app.js
+  n_65787465726e616c["Validation API [inferred]<br/>External HTTPS API<br/>Configured external processing endpoint"]
+  %% evidence external: inferred; HTTPS URL implies TLS port 443; the example destination is not a verified live service.
+  %% source external: deploy/compose.yaml
+  n_67617465776179["Web gateway<br/>nginx<br/>Serves the page and proxies API requests"]
+  %% evidence gateway: config
+  %% source gateway: deploy/nginx.conf
+  n_706f737467726573[("Job store<br/>PostgreSQL<br/>Persists submitted job payloads")]
+  %% evidence postgres: config
+  %% source postgres: deploy/compose.yaml
+  n_7265646973["Job queue<br/>Redis<br/>Holds job IDs for the worker"]
+  %% evidence redis: config
+  %% source redis: deploy/compose.yaml
+  n_776f726b6572["Worker<br/>Python<br/>Consumes queued IDs and calls validation"]
+  %% evidence worker: code
+  %% source worker: deploy/k8s.yaml
+  %% source worker: source/worker/worker.py
+  n_617069 -->|"[3] insert job · PostgreSQL · flow · TCP 5432"| n_706f737467726573
+  %% evidence api-postgres: code
+  %% source api-postgres: deploy/compose.yaml
+  %% source api-postgres: source/api/app.py
+  n_617069 -->|"[4] RPUSH jobs · RESP · flow · TCP 6379"| n_7265646973
+  %% evidence api-redis: code
+  %% source api-redis: deploy/compose.yaml
+  %% source api-redis: source/api/app.py
+  n_62726f77736572 -->|"[1] submit job · HTTP · flow · TCP 80"| n_67617465776179
+  %% evidence browser-gateway: code
+  %% source browser-gateway: deploy/nginx.conf
+  %% source browser-gateway: source/frontend/app.js
+  n_67617465776179 -->|"[2] proxy /api/ · HTTP · flow · TCP 8000"| n_617069
+  %% evidence gateway-api: config
+  %% source gateway-api: deploy/nginx.conf
+  n_776f726b6572 -->|"[B] POST job ID · HTTPS · async · TCP 443 [inferred]"| n_65787465726e616c
+  %% evidence worker-external: inferred; The client and URL establish intended traffic, not verified live reachability.
+  %% source worker-external: deploy/compose.yaml
+  %% source worker-external: source/worker/worker.py
+  n_776f726b6572 -->|"[A] BLPOP jobs · RESP · async · TCP 6379"| n_7265646973
+  %% evidence worker-redis: code
+  %% source worker-redis: deploy/compose.yaml
+  %% source worker-redis: source/worker/worker.py
+  note_65787465726e616c2d656772657373["Egress not verified [medium]<br/>The configured destination is an example hostname. No live<br/>connectivity or production egress policy was checked.<br/>Targets: external, worker-external"]
+  class note_65787465726e616c2d656772657373 note
+  legend["Solid: client opens connection to listener<br/>Dotted: reference or reading order, not traffic<br/>[inferred], [docs], [unknown], [unverified]: evidence status<br/>No port label: listening port not recorded"]
+  classDef note fill:#fef3c7,stroke:#b45309,color:#451a03
+  class legend,context note

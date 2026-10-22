@@ -65,6 +65,12 @@ work: mapping and producing diagrams is the original goal and remains the core.
 Diagrams as code in the house style. Lint for readability and semantics. Exports:
 draw.io, PNG, SVG, dark and light. *Exists as v0 for one diagram.*
 
+Mermaid architecture documentation also derives from the same authoritative model:
+overview, technologies, communication and deployment, with source evidence and explicit
+uncertainty. Project-wide analysis is agent-assisted and covers application code and
+configuration as well as Kubernetes. Documentation comes before the interactive explorer
+in this slice (ADR-0021); it does not introduce a file-level knowledge graph.
+
 ### L1 · Explore
 
 An interactive viewer on the same model:

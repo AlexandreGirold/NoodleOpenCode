@@ -2,8 +2,9 @@
 
 Take the spaghetti out of a large architecture and keep it clear.
 
-Noodle turns an architecture described as code into readable, presentation-grade
-diagrams, and aims further: interactive views, guided tours, visual PR diffs, discovery
+Noodle maps a project's technologies, services, infrastructure and communication in
+one source-backed architecture model. It generates Mermaid documentation and
+presentation-grade draw.io diagrams, and aims further: interactive views, guided tours, visual PR diffs, discovery
 from real clusters, live overlays, and a model AI agents can query.
 See [the vision](docs/VISION.md).
 
@@ -11,12 +12,13 @@ See [the vision](docs/VISION.md).
 
 ## Status
 
-**Contracts `v1alpha1`.** A system is a model (what exists), views (what each diagram
+**Contracts `v1alpha1` and `v1alpha2`.** A system is a model (what exists), views (what each diagram
 shows) and layouts (where a topology is drawn), rendered to draw.io in a dark or light
 theme. Five view types: topology, sequence, landscape (tech stack), catalog (service
 catalogue) and matrix (who may act on what, before and after a plan). noodle refuses to emit a diagram whose lines cross boxes, whose labels
-collide, or whose arrows break the connection semantics. Next: static discovery from
-Kubernetes manifests ([roadmap](docs/ROADMAP.md)).
+collide, or whose arrows break the connection semantics. `v1alpha2` adds durable evidence
+and coordinate-free Mermaid topology/landscape output. Kubernetes discovery remains
+supported; broader project analysis is agent-assisted ([roadmap](docs/ROADMAP.md)).
 
 ## Install
 
@@ -64,6 +66,44 @@ or just `nix run github:TheGostsniperfr/Noodle -- -list-icons`.
 
 ## Usage
 
+### Understand a project's architecture
+
+Start with deterministic inventory and supported declarative extraction:
+
+```bash
+noodle scan /path/to/project /path/to/related-repo -o inventory.yaml
+```
+
+This inventories deployment/dependency/IaC/CI inputs with source fingerprints, reuses
+Kubernetes discovery, and extracts Compose services/ports/dependency references plus
+Node/Python dependency metadata. Unsupported/dynamic inputs remain explicit gaps. No
+project code, template renderer, environment files or network services are executed.
+See the [parser matrix and workflow](skills/noodle-diagram/inventory.md). The inventory is
+an investigation aid, not a replacement for the curated architecture model or a live check.
+
+Ask the noodle skill to map the project's technologies, major components, deployment
+and communication. The coding agent investigates source/configuration, curates one
+model with evidence and unknowns, and generates question-specific Mermaid views plus
+an architecture guide. Kubernetes is one input alongside application clients, Compose,
+IaC and delivery configuration. Deterministic parsers provide the facts they support;
+the agent interprets gaps and curates architecture, rather than rereading every source.
+
+See the [mixed-stack example](examples/project-architecture/README.md).
+
+```bash
+noodle render examples/project-architecture --view overview --format mermaid -o overview.mmd
+noodle render examples/project-architecture --view stack --format mermaid -o stack.mmd
+noodle upgrade existing-v1alpha1-system new-v1alpha2-system
+```
+
+Maintain the model and view files, then regenerate Mermaid; generated `.mmd` files are
+not the source of truth. No `-o` means validation only. Upgrades require a new destination
+and mark legacy evidence unknown. Mermaid computes layout; it does not provide draw.io's
+exact geometry, badge placement or official logos. Its supported view types are topology
+and landscape; cards/notes and sequence/catalog/matrix return explicit unsupported errors.
+
+### Presentation diagrams and Kubernetes discovery
+
 ```bash
 noodle render architecture/platform -view runtime                          # check and lint only
 noodle render architecture/platform -view runtime -theme dark -o out.drawio  # then render
@@ -85,6 +125,7 @@ The format is in [the skill reference](skills/noodle-diagram/reference.md).
 | [`landscape`](examples/landscape) | a tech stack: bands, a side column, a pipeline, planned items with a target |
 | [`catalog`](examples/catalog) | a service catalogue built from the model's offerings |
 | [`cnp-access`](examples/cnp-access) | an access matrix from memberships and grants: what a segregation plan changes, phase by phase |
+| [`project-architecture`](examples/project-architecture) | one source-backed mixed-stack model, four Mermaid perspectives, Compose and Kubernetes deployment inputs |
 | [`platform-regression`](examples/platform-regression) | three large topologies from a real platform, kept as regression fixtures |
 
 ## Docs

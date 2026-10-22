@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TheGostsniperfr/Noodle/schemas/v1alpha2/view.schema.json",
+  "title": "noodle architecture View",
+  "type": "object", "required": ["apiVersion", "kind", "type"], "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"const": "noodle/v1alpha2"},
+    "kind": {"const": "View"},
+    "type": {"enum": ["topology", "sequence", "landscape", "catalog", "matrix"]},
+    "title": {"type": "string"}, "subtitle": {"type": "string"},
+    "meta": {"type": "array", "items": {"type": "string"}},
+    "include": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(/\\*\\*)?$"}},
+    "steps": {"type": "array"},
+    "background": {"type": "array", "items": {"type": "string"}},
+    "labels": {"type": "object", "additionalProperties": {"type": "string"}},
+    "participants": {"type": "array", "items": {"type": "string"}},
+    "cards": {"type": "array", "items": {"$ref": "../v1alpha1/view.schema.json#/$defs/card"}},
+    "notes": {"type": "array", "items": {"$ref": "../v1alpha1/view.schema.json#/$defs/note"}},
+    "bands": {"type": "array", "items": {"$ref": "../v1alpha1/view.schema.json#/$defs/band"}},
+    "side": {"type": "array", "items": {"$ref": "../v1alpha1/view.schema.json#/$defs/section"}},
+    "width": {"type": "number", "exclusiveMinimum": 0},
+    "columns": {"type": "integer", "minimum": 1, "maximum": 4},
+    "identities": {"type": "array", "items": {"$ref": "../v1alpha1/view.schema.json#/$defs/section"}},
+    "resources": {"type": "array", "items": {"$ref": "../v1alpha1/view.schema.json#/$defs/section"}},
+    "state": {"enum": ["current", "target", "diff"]}
+  },
+  "allOf": [
+    {"$ref": "../v1alpha1/view.schema.json#/allOf/0"},
+    {"$ref": "../v1alpha1/view.schema.json#/allOf/1"}
+  ]
+}

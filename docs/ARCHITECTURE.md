@@ -1,7 +1,8 @@
 # Noodle · Architecture overview
 
-Status: **draft**. Model, view and layout are frozen as `v1alpha1` (ADR-0007,
-`schemas/v1alpha1/`); the sketches below also show parts not built yet (tours,
+Status: **draft**. The original model/view/layout contract is `v1alpha1` (ADR-0007);
+`v1alpha2` adds evidence and coordinate-free Mermaid authoring (ADR-0021). Both
+versions are readable, and discovery fragments remain v1alpha1. The sketches below also show parts not built yet (tours,
 redaction, overlays, adapters). The v0 single-file format is gone: `noodle migrate`
 converts old files.
 
@@ -41,6 +42,31 @@ converts old files.
 | `mcp` | model (+ overlays) | MCP tools | L6, but a read-only version is cheap early |
 
 **Rule: a module depends on contracts, never on another module's internals.**
+
+### Project architecture documentation (implemented)
+
+`internal/inventory` and `noodle scan` provide a deterministic repository preflight
+(ADR-0022). A separately versioned Inventory report lists recognized inputs/hashes,
+reuses the Kubernetes adapter, extracts conservative Compose/dependency declarations,
+and records unsupported/dynamic source locations. This never changes the curated model,
+executes projects or substitutes dependency declarations for runtime connections.
+
+The coding agent investigates relevant application clients, endpoint configuration,
+deployment inputs and manifests, then curates one model. The CLI validates and generates;
+it is not a general-purpose autonomous source analyzer. Kubernetes discovery provides
+deterministic fragments for the subset it supports.
+
+`internal/render/mermaid` consumes model/view contracts directly. `CheckArchitecture`
+validates facts, evidence and view semantics; v1alpha2 topology does not require a
+coordinate layout. The existing draw.io path still runs `Check`, resolves explicit
+geometry and applies all geometric lint. Mermaid calculates its own geometry and puts
+target ports in edge labels; rendered output needs visual review.
+
+v1alpha2's `evidence` map records every element, connection and reference's classification,
+source locations and explanation of unknowns. The explicit `upgrade` command preserves
+legacy facts in a new directory and marks their evidence unknown. The same model produces
+overview, technology, communication and deployment perspectives and can later feed an
+explorer without reconstructing facts from Mermaid labels.
 
 ## Contracts (sketches)
 

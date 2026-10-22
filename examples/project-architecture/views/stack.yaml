@@ -1,0 +1,26 @@
+apiVersion: noodle/v1alpha2
+kind: View
+type: landscape
+title: Jobs · Technology landscape
+subtitle: Which technologies support each capability?
+bands:
+  - id: frontend
+    title: Frontend
+    sections:
+      - title: Client
+        items: [browser, gateway]
+  - id: backend
+    title: Backend
+    sections:
+      - title: Services
+        items: [api, worker]
+  - id: data
+    title: Data
+    sections:
+      - title: Stores
+        items: [postgres, redis]
+  - id: external
+    title: External
+    sections:
+      - title: Dependencies
+        items: [external]

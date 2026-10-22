@@ -65,6 +65,30 @@
         {"id": "P6b-04", "description": "Matrix renders cells, change frames and tags, counts and legend in both themes", "verify": "noodle render examples/cnp-access --view matrix -theme light -o x.drawio passes the lint and writes the file", "passes": true},
         {"id": "P6b-05", "description": "examples/cnp-access renders dark and light in init.sh and CI", "verify": "./scripts/init.sh renders examples/cnp-access", "passes": true}
       ]
+    },
+    {
+      "id": "005",
+      "title": "Project architecture and Mermaid",
+      "spec": "specs/005-project-architecture-mermaid/spec.md",
+      "features": [
+        {"id": "P005-01", "description": "Versioned source-backed architecture contracts and non-overwriting upgrade", "verify": "go test ./internal/model/...", "passes": true},
+        {"id": "P005-02", "description": "Deterministic topology and landscape Mermaid generation with semantic validation", "verify": "go test ./internal/render/mermaid/...", "passes": true},
+        {"id": "P005-03", "description": "CLI Mermaid format selection and explicit system upgrade", "verify": "go test ./cmd/noodle/...", "passes": true},
+        {"id": "P005-04", "description": "Source-backed mixed-stack architecture with four generated Mermaid views", "verify": "scripts/check-mermaid.sh", "passes": true},
+        {"id": "P005-05", "description": "Concise agent-assisted project architecture workflow verified against example sources", "verify": "spec 005 tasks.md records the independent source review and workflow exercise", "passes": true},
+        {"id": "P005-06", "description": "Generated mixed-stack Mermaid diagrams parse, render and pass visual review", "verify": "spec 005 tasks.md records Mermaid CLI rendering and visual review evidence", "passes": true}
+      ]
+    },
+    {
+      "id": "006",
+      "title": "Deterministic repository inventory and extraction",
+      "spec": "specs/006-repository-inventory/spec.md",
+      "features": [
+        {"id": "P006-01", "description": "Versioned deterministic multi-root inventory with source fingerprints and explicit parser gaps", "verify": "go test ./internal/inventory/...", "passes": true},
+        {"id": "P006-02", "description": "Source-backed Kubernetes reuse, conservative Compose and dependency extraction without credentials or invented traffic", "verify": "go test ./internal/inventory/...", "passes": true},
+        {"id": "P006-03", "description": "Scan CLI supports repeatable stdout/file output and preserves prior inventory on failure", "verify": "go test ./cmd/noodle/... -run TestScanCommand", "passes": true},
+        {"id": "P006-04", "description": "Scan-first repository and installed skill workflow exercised on real repository inputs", "verify": "spec 006 tasks.md records real scans and skill integration", "passes": true}
+      ]
     }
   ],
   "backlog": [

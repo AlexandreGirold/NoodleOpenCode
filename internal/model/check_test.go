@@ -24,6 +24,9 @@ func TestCheck_ReportsNothing_OnEveryExample(t *testing.T) {
 			require.NoError(t, err)
 
 			findings := model.Check(s)
+			if s.Model.APIVersion == model.ArchitectureVersion {
+				findings = model.CheckArchitecture(s)
+			}
 
 			assert.Empty(t, findings)
 		})

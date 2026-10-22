@@ -1,0 +1,62 @@
+---
+config:
+  theme: dark
+  securityLevel: strict
+  markdownAutoWrap: false
+  flowchart:
+    wrappingWidth: 350
+  elk:
+    lineHops: false
+---
+%% Jobs · Deployment
+%% Which local and production resources implement the logical services?
+%% Dotted deploys links are configuration references; no cross-environment traffic is asserted.
+flowchart LR
+  context["Jobs · Deployment<br/>Which local and production resources implement the logical<br/>services?<br/>Dotted deploys links are configuration references; no<br/>cross-environment traffic is asserted."]
+  n_617069["Jobs API<br/>Python · FastAPI<br/>Stores jobs and queues their IDs"]
+  %% evidence api: code
+  %% source api: deploy/k8s.yaml
+  %% source api: source/api/app.py
+  subgraph n_6c6f63616c["Local development<br/>Docker Compose<br/>Separate local instance"]
+    %% evidence local: config
+    %% source local: deploy/compose.yaml
+    n_6c6f63616c2d617069["api service<br/>Compose"]
+    %% evidence local-api: config
+    %% source local-api: deploy/compose.yaml
+    n_6c6f63616c2d776f726b6572["worker service<br/>Compose"]
+    %% evidence local-worker: config
+    %% source local-worker: deploy/compose.yaml
+  end
+  subgraph n_70726f64["Production<br/>Kubernetes<br/>Namespace prod · deployment intent"]
+    %% evidence prod: config
+    %% source prod: deploy/k8s.yaml
+    n_70726f642d617069["api Deployment<br/>Kubernetes"]
+    %% evidence prod-api: config
+    %% source prod-api: deploy/k8s.yaml
+    n_70726f642d776f726b6572["worker Deployment<br/>Kubernetes"]
+    %% evidence prod-worker: config
+    %% source prod-worker: deploy/k8s.yaml
+  end
+  n_776f726b6572["Worker<br/>Python<br/>Consumes queued IDs and calls validation"]
+  %% evidence worker: code
+  %% source worker: deploy/k8s.yaml
+  %% source worker: source/worker/worker.py
+  n_6c6f63616c2d617069 -.->|"reference: deploys"| n_617069
+  linkStyle 0 stroke-dasharray:3 3
+  %% evidence local-deploys-api: config
+  %% source local-deploys-api: deploy/compose.yaml
+  n_6c6f63616c2d776f726b6572 -.->|"reference: deploys"| n_776f726b6572
+  linkStyle 1 stroke-dasharray:3 3
+  %% evidence local-deploys-worker: config
+  %% source local-deploys-worker: deploy/compose.yaml
+  n_70726f642d617069 -.->|"reference: deploys"| n_617069
+  linkStyle 2 stroke-dasharray:3 3
+  %% evidence prod-deploys-api: config
+  %% source prod-deploys-api: deploy/k8s.yaml
+  n_70726f642d776f726b6572 -.->|"reference: deploys"| n_776f726b6572
+  linkStyle 3 stroke-dasharray:3 3
+  %% evidence prod-deploys-worker: config
+  %% source prod-deploys-worker: deploy/k8s.yaml
+  legend["Solid: client opens connection to listener<br/>Dotted: reference or reading order, not traffic<br/>[inferred], [docs], [unknown], [unverified]: evidence status<br/>No port label: listening port not recorded"]
+  classDef note fill:#fef3c7,stroke:#b45309,color:#451a03
+  class legend,context note

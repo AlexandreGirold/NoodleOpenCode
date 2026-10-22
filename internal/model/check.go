@@ -37,13 +37,14 @@ func set(vs ...string) map[string]bool {
 }
 
 type checker struct {
-	s         *System
-	findings  []Finding
-	elements  map[string]Element
-	conns     map[string]Connection
-	edgeIDs   map[string]bool
-	offerings map[string]bool
-	ends      map[string][2]string
+	s            *System
+	architecture bool
+	findings     []Finding
+	elements     map[string]Element
+	conns        map[string]Connection
+	edgeIDs      map[string]bool
+	offerings    map[string]bool
+	ends         map[string][2]string
 }
 
 func (c *checker) errf(file, id, format string, args ...any) {
@@ -52,14 +53,38 @@ func (c *checker) errf(file, id, format string, args ...any) {
 
 // Check reports every broken reference and invalid value across the model, its views
 // and their layouts. An empty result means the system can be resolved.
-func Check(s *System) []Finding {
-	c := &checker{s: s, elements: map[string]Element{}, conns: map[string]Connection{}, edgeIDs: map[string]bool{}, offerings: map[string]bool{}, ends: map[string][2]string{}}
+func Check(s *System) []Finding { return checkWith(s, false) }
+
+// CheckArchitecture performs semantic checks for v1alpha2 architecture systems
+// (ADR-0021): coordinate-free facts, evidence and version consistency.
+func CheckArchitecture(s *System) []Finding { return checkWith(s, true) }
+
+func checkWith(s *System, arch bool) []Finding {
+	c := &checker{s: s, architecture: arch, elements: map[string]Element{}, conns: map[string]Connection{}, edgeIDs: map[string]bool{}, offerings: map[string]bool{}, ends: map[string][2]string{}}
+	if s == nil || s.Model == nil {
+		return []Finding{{File: "model.yaml", ID: "(empty)", Msg: "missing model"}}
+	}
+	if s.Model.APIVersion != APIVersion && s.Model.APIVersion != ArchitectureVersion {
+		c.errf("model.yaml", "(version)", "unsupported apiVersion %q", s.Model.APIVersion)
+	}
+	for _, v := range s.Views {
+		if v.APIVersion != s.Model.APIVersion {
+			c.errf(filepath.Join("views", v.ID+".yaml"), v.ID, "apiVersion differs from model")
+		}
+	}
+	for _, l := range s.Layouts {
+		if l.APIVersion != s.Model.APIVersion {
+			c.errf(filepath.Join("layouts", l.ID+".yaml"), l.ID, "apiVersion differs from model")
+		}
+	}
 	c.checkModel()
 	for _, id := range s.ViewIDs() {
 		c.checkView(s.Views[id])
 	}
 	for _, id := range sortedKeys(s.Layouts) {
-		c.checkLayout(s.Layouts[id])
+		if !(arch && s.Model.APIVersion == ArchitectureVersion) {
+			c.checkLayout(s.Layouts[id])
+		}
 	}
 	sort.SliceStable(c.findings, func(i, j int) bool {
 		if c.findings[i].File != c.findings[j].File {
@@ -105,6 +130,43 @@ func (c *checker) checkModel() {
 				c.errf(file, e.ID, "parent %q is not a zone", e.Parent)
 			}
 		}
+		ports := map[string]bool{}
+		for _, p := range e.Ports {
+			if p.Name == "" || ports[p.Name] {
+				c.errf(file, e.ID, "duplicate or empty port name %q", p.Name)
+			}
+			ports[p.Name] = true
+			if p.Number < 1 || p.Number > 65535 {
+				c.errf(file, e.ID, "port %q number %d is outside 1..65535", p.Name, p.Number)
+			}
+			if p.Protocol != "TCP" && p.Protocol != "UDP" && p.Protocol != "SCTP" {
+				c.errf(file, e.ID, "port %q has invalid transport %q", p.Name, p.Protocol)
+			}
+		}
+	}
+	// Parent pointers must form a forest, not merely point at existing zones.
+	parents := map[string]string{}
+	for _, e := range c.s.Model.Elements {
+		parents[e.ID] = e.Parent
+	}
+	state := map[string]int{}
+	var visitParent func(string)
+	visitParent = func(id string) {
+		if state[id] == 1 {
+			c.errf(file, id, "parent cycle")
+			return
+		}
+		if state[id] == 2 {
+			return
+		}
+		state[id] = 1
+		if p := parents[id]; p != "" {
+			visitParent(p)
+		}
+		state[id] = 2
+	}
+	for id := range parents {
+		visitParent(id)
 	}
 	c.checkMatches(file)
 	for _, cn := range c.s.Model.Connections {
@@ -159,6 +221,54 @@ func (c *checker) checkModel() {
 			if _, ok := c.elements[t]; !ok && !c.edgeIDs[t] {
 				c.errf(file, a.ID, "target %q does not exist in the model", t)
 			}
+		}
+	}
+	if c.s.Model.APIVersion == ArchitectureVersion {
+		c.checkEvidence(file)
+	}
+}
+
+func (c *checker) checkEvidence(file string) {
+	want := map[string]bool{}
+	for _, e := range c.s.Model.Elements {
+		want[e.ID] = true
+	}
+	for _, e := range c.s.Model.Connections {
+		want[e.ID] = true
+	}
+	for _, e := range c.s.Model.References {
+		want[e.ID] = true
+	}
+	for id := range want {
+		ev, ok := c.s.Model.Evidence[id]
+		if !ok {
+			c.errf(file, id, "missing evidence")
+			continue
+		}
+		switch ev.How {
+		case "code", "config", "inferred", "docs":
+			if len(ev.Sources) == 0 {
+				c.errf(file, id, "evidence %q needs at least one source", ev.How)
+			}
+		case "unknown":
+			if strings.TrimSpace(ev.Note) == "" {
+				c.errf(file, id, "unknown evidence needs a note")
+			}
+		default:
+			c.errf(file, id, "unknown evidence how %q", ev.How)
+		}
+		for _, src := range ev.Sources {
+			if (src.File == "") == (src.Object == "") {
+				c.errf(file, id, "evidence source needs exactly one of file or object")
+			}
+			if src.Line != nil && (*src.Line < 0 || src.File == "") {
+				c.errf(file, id, "evidence line must be nonnegative and only accompany file")
+			}
+		}
+	}
+	for id := range c.s.Model.Evidence {
+		if !want[id] {
+			c.errf(file, id, "orphan evidence: no element, connection or reference")
 		}
 	}
 }
@@ -220,17 +330,50 @@ func (c *checker) checkView(v *View) {
 	if v.Type == "sequence" {
 		c.checkSequence(file, v)
 	} else {
+		included := map[string]bool{}
+		for _, id := range c.s.Included(v) {
+			included[id] = true
+		}
+		seen := map[string]bool{}
 		for _, st := range v.Steps {
 			if st.Connection == "" {
 				c.errf(file, v.ID, "a topology step is a connection id, not a message (ADR-0011)")
 			} else if _, ok := c.conns[st.Connection]; !ok {
 				c.errf(file, st.Connection, "step is not a connection of the model")
+			} else {
+				if seen[st.Connection] {
+					c.errf(file, st.Connection, "repeated topology step")
+				}
+				seen[st.Connection] = true
+				cn := c.conns[st.Connection]
+				if !included[cn.From] || !included[cn.To] {
+					c.errf(file, st.Connection, "step is hidden because an endpoint is not included")
+				}
 			}
 		}
 	}
+	backgroundSeen := map[string]bool{}
 	for _, id := range v.Background {
-		if _, ok := c.conns[id]; !ok {
+		cn, ok := c.conns[id]
+		if !ok {
 			c.errf(file, id, "step is not a connection of the model")
+		} else if v.Type != "sequence" {
+			for _, step := range v.Steps {
+				if step.Connection == id {
+					c.errf(file, id, "connection cannot be both a numbered step and background work")
+				}
+			}
+			if backgroundSeen[id] {
+				c.errf(file, id, "repeated background connection")
+			}
+			backgroundSeen[id] = true
+			included := map[string]bool{}
+			for _, element := range c.s.Included(v) {
+				included[element] = true
+			}
+			if !included[cn.From] || !included[cn.To] {
+				c.errf(file, id, "background connection is hidden because an endpoint is not included")
+			}
 		}
 	}
 	for _, id := range sortedKeys(v.Labels) {
@@ -251,7 +394,7 @@ func (c *checker) checkView(v *View) {
 		c.mustElement(file, v.ID, "participant", p)
 	}
 	_, hasLayout := c.s.Layouts[v.ID]
-	if v.Type == "topology" && !hasLayout {
+	if v.Type == "topology" && !hasLayout && !(c.architecture && c.s.Model.APIVersion == ArchitectureVersion) {
 		c.errf(file, v.ID, "topology view has no layouts/%s.yaml", v.ID)
 	}
 	if computedViews[v.Type] && hasLayout {

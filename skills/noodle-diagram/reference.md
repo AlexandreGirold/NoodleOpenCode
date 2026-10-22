@@ -1,4 +1,7 @@
-# Reference (`noodle/v1alpha1`)
+# Reference (versioned noodle contracts)
+
+For layout-free architecture docs, start at [v1alpha2](#v1alpha2-docs-first-layout-free-mermaid)
+below. The tables first describe the original draw.io presentation contract.
 
 A system is one directory. Unknown fields are rejected; every file carries
 `apiVersion: noodle/v1alpha1` and its `kind`. JSON Schemas are in the noodle repository
@@ -263,4 +266,89 @@ cards:
 
 The noodle repository has one example per view type in `examples/`: `cnp-runtime`
 (topology and sequence at scale), `sequence-basics`, `landscape`, `catalog`, and
-`platform-regression` for large topologies.
+`platform-regression` for large topologies. `examples/project-architecture` provides
+a source-backed mixed-stack model, four Mermaid views and an architecture guide.
+
+## v1alpha2 (docs-first, layout-free Mermaid)
+
+Use `apiVersion: noodle/v1alpha2` consistently across model/view/layout; discovered
+fragments stay v1alpha1. The Model/View/Layout schemas live in `schemas/v1alpha2/`.
+Mermaid supports topology and landscape; topology takes no coordinates. draw.io still
+requires a valid topology layout. Its original geometric lint is unchanged.
+
+Mermaid uses quoted component labels, actual selected containment, visible technology
+and responsibility, and known target transport/port in edge labels. It preserves
+connection kinds and denial intent/enforcement. References are dotted, not traffic.
+Landscape reading-order arrows are explicitly labelled, never runtime connections.
+Automatic layout does not guarantee draw.io's orthogonal routing, endpoint sides,
+border badges, official icons or collision checks: render and inspect the result.
+Sequence/catalog/matrix views and view cards/notes return explicit unsupported errors
+for Mermaid. Use the existing draw.io output for those views.
+
+### Evidence
+
+The model has an `evidence` map keyed by every element, connection and reference ID:
+
+```yaml
+apiVersion: noodle/v1alpha2
+kind: Model
+elements:
+  - {id: api, kind: backend, title: API, tech: Go}
+evidence:
+  api:
+    how: code
+    sources: [{file: src/api/main.go, line: 12}]
+  # An unknown fact instead uses: {how: unknown, note: Explain what is missing.}
+```
+
+`code` read in manifests/source, `config` resolved from values/env, `inferred` a guess
+(such as a URL in an env var, edges marked uncertain), `docs` only in documentation,
+`unknown` when not determinable. Non-unknown entries need one or more sources. A source
+has either `file` (relative to the system directory) and optional nonnegative `line`,
+or `object`, never both. Unknown entries require a nonempty `note`. No orphan evidence
+keys are allowed. Uncertain relationships should normally be questions/annotations on
+known components rather than fabricated connections. Evidence classes appear on rendered
+nodes/edges; detailed sources are retained in safe Mermaid comments and the guide.
+
+### CLI
+
+```bash
+noodle render DIR --view ID --format mermaid -o view.mmd   # -o omitted = validation only
+noodle upgrade SRC DEST                                  # v1alpha1 directory -> new v1alpha2 directory
+```
+
+Upgrade preserves facts, views, layouts and discovered fragments. The destination must
+not exist; missing legacy evidence becomes unknown, never a manufactured citation.
+For a v0 single file, first use `noodle migrate SPEC.yaml DIR`.
+
+### Whole-project analysis and updates
+
+Read relevant manifests, entrypoints, runtime clients, service URLs, proxies, Compose,
+IaC and delivery configuration. Manifests identify technologies; clients/config establish
+intended relationships. Code/config wins over docs. Use existing k8s fragments as evidence
+for the subset they cover, not as proof that every connection was discovered. Keep local,
+staging and production endpoints distinct. A logical service can link to discovered
+resource IDs through `matches`; deploys/manages relationships are references, not traffic.
+
+Keep one source model and cheap question-specific views. Changing a shared component's
+technology updates every generated perspective after regeneration. Keep source-relative
+citations current and explain assumptions/unknowns in the adjacent guide.
+
+### Presentation rules retained for draw.io
+
+- Use official product logos (`noodle -list-icons`); add project SVGs under `.noodle/icons`
+  and pass `-icons DIR`. Use Tailwind house palettes and different sibling zone colours.
+- Nodes use title, technology and one-line responsibility. Region = infrastructure/trust
+  perimeter; group = capability. Never mix one exploded instance with aggregate siblings.
+- Connections leave right/bottom and enter left/top; use `against_flow` for explicit
+  outbound tunnels/hairpins. The listening port is on the server border, never the client.
+- Topology: one nominal step per connection; background work uses letters. Responses
+  that change a path are notes. Repeated exchanges belong in sequence views.
+- `denied` without `enforced_by` is intent, not proof of enforcement. Describe it honestly.
+- Keep 60–80 px zone corridors and at least 24 px between nodes. Use orthogonal routes,
+  reusable named lanes and zone-relative boxes. Labels belong on clear straight segments.
+- Include title/question, scope, source and version metadata; add the legend, request path,
+  background work and any gaps cards. Planned/deprecated status and target stay in the model.
+- Build both themes, export PNG and look at it. draw.io is required for its image export;
+  deliver `.drawio` and report the missing exporter if unavailable. SVG export:
+  `drawio -x -f svg --embed-diagram -o out.drawio.svg out.drawio`.

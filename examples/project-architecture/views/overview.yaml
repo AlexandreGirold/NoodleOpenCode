@@ -1,0 +1,14 @@
+apiVersion: noodle/v1alpha2
+kind: View
+type: topology
+title: Jobs · System overview
+subtitle: What are the principal runtime components?
+meta: [Logical architecture; local and production are separate instances.]
+include:
+  - browser
+  - gateway
+  - api
+  - postgres
+  - redis
+  - worker
+  - external

@@ -23,6 +23,8 @@ jobs:
         run: for d in platform-overview app-runtime-view repo-map; do go run ./cmd/noodle render examples/platform-regression/$d -icons examples/platform-regression/icons; done
       - name: lint docs diagrams
         run: go run ./cmd/noodle render docs/diagrams/contract-pipeline -icons docs/diagrams/icons
+      - name: generated Mermaid architecture stays reproducible
+        run: bash scripts/check-mermaid.sh
       - name: features.json keeps its history
         run: ./scripts/check-features.sh "${{ github.event.pull_request.base.sha || github.event.before }}"
       - name: vendor directory matches go.mod
